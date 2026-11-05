@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DoorDash <> Movate Operations Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #0F172A;
+      --accent-movate: #2563EB;
+      --accent-dd: #EB1700;
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --surface-border: #E2E8F0;
+      --text-main: #0F172A;
+      --text-secondary: #475569;
+      --text-muted: #94A3B8;
+      --status-red: #DC2626;
+      --status-yellow: #D97706;
+      --status-orange: #EA580C;
+      --status-green: #16A34A;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; }
+    aside { width: 240px; background: var(--primary); color: #fff; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; border-right: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+    .brand { padding: 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .brand-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; }
+    .badge-movate { background: var(--accent-movate); padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+    .partner-pill { background: rgba(235,23,0,0.15); color: #FF6B57; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-top: 4px; display: inline-block; }
+    .nav { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .nav-label { font-size: 10px; text-transform: uppercase; font-weight: 700; color: #64748B; padding: 8px 10px 4px; }
+    .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; color: #94A3B8; font-size: 12px; font-weight: 500; cursor: pointer; text-decoration: none; }
+    .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    .nav-item.active { background: var(--accent-movate); color: #fff; font-weight: 600; }
+    .sidebar-footer { padding: 14px 16px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; display: flex; align-items: center; gap: 8px; color: #94A3B8; }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #10B981; }
+    .sync-dot.loading { background: #F59E0B; animation: pulse 1s infinite alternate; }
+    @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
+
+    main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .header { background: var(--surface); border-bottom: 1px solid var(--surface-border); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; border: 1px solid transparent; font-family: inherit; }
+    .btn-movate { background: var(--accent-movate); color: #fff; }
+    .btn-outline { background: #fff; border-color: var(--surface-border); color: var(--text-secondary); }
+    .content { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Department Scorecards */
+    .dept-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 1024px) { .dept-grid { grid-template-columns: 1fr; } }
+    .dept-card { background: var(--surface); border: 1px solid var(--surface-border); border-radius: 8px; padding: 14px; border-top: 3px solid transparent; }
+    .dept-card.c-qa { border-top-color: #4F46E5; }
+    .dept-card.c-trn { border-top-color: #DB2777; }
+    .dept-card.c-ops { border-top-color: #0284C7; }
+    .dept-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; font-weight: 700; }
+    .dept-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #F8FAFC; padding: 8px; border-radius: 6px; font-size: 11px; margin-bottom: 8px; }
+    .dept-stat-val { font-size: 15px; font-weight: 800; margin-top: 2px; }
+
+    /* KPI Row */
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .kpi-card { background: var(--surface); border: 1px solid var(--surface-border); border-radius: 8px; padding: 12px 16px; }
+    .kpi-card span { font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; }
+    .kpi-card h3 { font-size: 20px; font-weight: 800; margin-top: 2px; }
+
+    /* Filters */
+    .filter-bar { background: var(--surface); border: 1px solid var(--surface-border); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .pills { display: flex; gap: 4px; }
+    .pill { padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 14px; border: 1px solid var(--surface-border); background: var(--bg); color: var(--text-secondary); cursor: pointer; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* Kanban */
+    .kanban-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .kanban-col { background: #F8FAFC; border: 1px solid var(--surface-border); border-radius: 8px; display: flex; flex-direction: column; min-height: 480px; }
+    .col-header { padding: 10px 12px; border-bottom: 1px solid var(--surface-border); font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; }
+    .col-body { padding: 8px; display: flex; flex-direction: column; gap: 8px; flex: 1; overflow-y: auto; }
+    .card { background: var(--surface); border: 1px solid var(--surface-border); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .card-title { font-size: 12px; font-weight: 700; }
+    .card-meta { font-size: 11px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 2px; }
+    .badge-dept { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 2px 4px; border-radius: 4px; width: fit-content; text-transform: uppercase; }
+    .badge-qa { background: #EEF2FF; color: #4338CA; }
+    .badge-trn { background: #FDF2F8; color: #BE185D; }
+    .badge-ops { background: #F0F9FF; color: #0369A1; }
+    .blocker-box { background: #FFF7ED; border: 1px solid #FFEDD5; padding: 6px; border-radius: 4px; font-size: 10px; color: #C2410C; }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #F1F5F9; padding-top: 6px; font-size: 10px; font-family: monospace; }
+    .card-btns { display: flex; gap: 4px; }
+    .mini-btn { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--surface-border); background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    /* Analytics Charts */
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 1024px) { .chart-grid { grid-template-columns: 1fr; } }
+    .chart-card { background: var(--surface); border: 1px solid var(--surface-border); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .chart-container { position: relative; height: 220px; width: 100%; }
+
+    /* Modal */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 100; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; }
+    .form-group input, .form-group select { padding: 7px; border: 1px solid var(--surface-border); border-radius: 4px; font-size: 12px; outline: none; font-family: inherit; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  </style>
+</head>
+<body>
+
+  <aside>
+    <div class="brand">
+      <div class="brand-title"><span class="badge-movate">MOVATE</span> OPS HUB</div>
+      <span class="partner-pill">DoorDash Ops</span>
+    </div>
+    <div class="nav">
+      <div class="nav-label">Views</div>
+      <div class="nav-item active" id="btnNavKanban" onclick="changeView('kanban')"><i data-lucide="layout-grid" style="width:14px;height:14px;"></i> Kanban Board</div>
+      <div class="nav-item" id="btnNavTable" onclick="changeView('table')"><i data-lucide="table" style="width:14px;height:14px;"></i> Detailed Registry</div>
+      <div class="nav-item" id="btnNavAnalytics" onclick="changeView('analytics')"><i data-lucide="bar-chart-3" style="width:14px;height:14px;"></i> Productivity &amp; SLAs</div>
+
+      <div class="nav-label" style="margin-top:10px;">Departments</div>
+      <div class="nav-item" onclick="setDeptFilter('QA')"><i data-lucide="shield-check" style="width:14px;height:14px;color:#818CF8;"></i> QA Track</div>
+      <div class="nav-item" onclick="setDeptFilter('TRN')"><i data-lucide="graduation-cap" style="width:14px;height:14px;color:#F472B6;"></i> Training Track</div>
+      <div class="nav-item" onclick="setDeptFilter('OPS')"><i data-lucide="activity" style="width:14px;height:14px;color:#38BDF8;"></i> Operations Track</div>
+    </div>
+    <div class="sidebar-footer">
+      <span class="sync-dot" id="syncIndicator"></span>
+      <span id="syncText">Connected</span>
+    </div>
+  </aside>
+
+  <main>
+    <div class="header">
+      <div>
+        <h2 style="font-size:16px; font-weight:800;">DoorDash &lt;&gt; Movate Deliverables Hub</h2>
+        <p style="font-size:11px; color:var(--text-secondary);">Direct Single Source of Truth</p>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-outline" onclick="loadData()"><i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> Refresh</button>
+        <button class="btn btn-movate" onclick="openModal()"><i data-lucide="plus-circle" style="width:12px;height:12px;"></i> New Deliverable</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Department Scorecards (QA / TRN / OPS) -->
+      <div class="dept-grid">
+        <div class="dept-card c-qa">
+          <div class="dept-head"><span>🛡️ QA (Quality Assurance)</span><span id="qaCount">0</span></div>
+          <div class="dept-stats">
+            <div><span>SLA Rate:</span><div class="dept-stat-val" id="qaSla" style="color:var(--status-green);">100%</div></div>
+            <div><span>Blockers:</span><div class="dept-stat-val" id="qaBlockers" style="color:var(--status-orange);">0</div></div>
+          </div>
+        </div>
+        <div class="dept-card c-trn">
+          <div class="dept-head"><span>🎓 TRN (Training)</span><span id="trnCount">0</span></div>
+          <div class="dept-stats">
+            <div><span>SLA Rate:</span><div class="dept-stat-val" id="trnSla" style="color:var(--status-green);">100%</div></div>
+            <div><span>Blockers:</span><div class="dept-stat-val" id="trnBlockers" style="color:var(--status-orange);">0</div></div>
+          </div>
+        </div>
+        <div class="dept-card c-ops">
+          <div class="dept-head"><span>⚡ OPS (Operations)</span><span id="opsCount">0</span></div>
+          <div class="dept-stats">
+            <div><span>SLA Rate:</span><div class="dept-stat-val" id="opsSla" style="color:var(--status-green);">100%</div></div>
+            <div><span>Blockers:</span><div class="dept-stat-val" id="opsBlockers" style="color:var(--status-orange);">0</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- High-Level KPI Summary -->
+      <div class="kpi-row">
+        <div class="kpi-card"><span>Total Active</span><h3 id="kpiTotal">0</h3></div>
+        <div class="kpi-card"><span>In Progress</span><h3 id="kpiProgress" style="color:var(--status-yellow);">0</h3></div>
+        <div class="kpi-card"><span>Blocked (Client Action)</span><h3 id="kpiBlocked" style="color:var(--status-orange);">0</h3></div>
+        <div class="kpi-card"><span>Completed</span><h3 id="kpiFinished" style="color:var(--status-green);">0</h3></div>
+      </div>
+
+      <!-- Filter Controls -->
+      <div class="filter-bar">
+        <div class="pills">
+          <div class="pill active" id="pillAll" onclick="setDeptFilter('ALL')">All Departments</div>
+          <div class="pill" id="pillQA" onclick="setDeptFilter('QA')">QA</div>
+          <div class="pill" id="pillTRN" onclick="setDeptFilter('TRN')">Training</div>
+          <div class="pill" id="pillOPS" onclick="setDeptFilter('OPS')">OPS</div>
+        </div>
+        <span style="font-size:11px;color:var(--text-secondary);">Showing <strong id="filterShowing">0</strong> deliverables</span>
+      </div>
+
+      <!-- VIEW 1: Kanban Board -->
+      <div id="viewKanban" class="kanban-grid">
+        <div class="kanban-col"><div class="col-header" style="color:var(--status-red);">🔴 Not Started <span id="cntNotStarted">0</span></div><div class="col-body" id="colNotStarted"></div></div>
+        <div class="kanban-col"><div class="col-header" style="color:var(--status-yellow);">🟡 In Progress <span id="cntProgress">0</span></div><div class="col-body" id="colProgress"></div></div>
+        <div class="kanban-col"><div class="col-header" style="color:var(--status-orange);">🟠 Blocked <span id="cntBlocked">0</span></div><div class="col-body" id="colBlocked"></div></div>
+        <div class="kanban-col"><div class="col-header" style="color:var(--status-green);">🟢 Completed <span id="cntFinished">0</span></div><div class="col-body" id="colFinished"></div></div>
+      </div>
+
+      <!-- VIEW 2: Detailed Registry Table -->
+      <div id="viewTable" style="display:none; background:#fff; border:1px solid var(--surface-border); border-radius:8px; overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
+          <thead>
+            <tr style="background:#F8FAFC; border-bottom:1px solid var(--surface-border);">
+              <th style="padding:10px;">ID</th><th>Dept</th><th>Title</th><th>Owner</th><th>Owner Email</th><th>Requester</th><th>EDD</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableRecords"></tbody>
+        </table>
+      </div>
+
+      <!-- VIEW 3: Analytics & Accountability -->
+      <div id="viewAnalytics" style="display:none; flex-direction:column; gap:14px;">
+        <div class="chart-grid">
+          <div class="chart-card">
+            <h4 style="font-size:12px;font-weight:700;">SLA Compliance by Department (%)</h4>
+            <div class="chart-container"><canvas id="slaChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h4 style="font-size:12px;font-weight:700;">Task Status Breakdown</h4>
+            <div class="chart-container"><canvas id="statusChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Create/Edit Modal -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <h3 style="font-size:14px; font-weight:700;" id="modalTitle">Register Deliverable</h3>
+      <form id="taskForm" onsubmit="saveTask(event)">
+        <input type="hidden" id="fId">
+        <div class="grid-2">
+          <div class="form-group"><label>Department Track *</label><select id="fDept"><option value="QA">QA (Quality Assurance)</option><option value="TRN">TRN (Training)</option><option value="OPS">OPS (Operations)</option></select></div>
+          <div class="form-group"><label>Priority *</label><select id="fPriority"><option value="High">High</option><option value="Medium" selected>Medium</option><option value="Low">Low</option></select></div>
+        </div>
+        <div class="form-group"><label>Deliverable Title *</label><input type="text" id="fTitle" required></div>
+        <div class="grid-2">
+          <div class="form-group"><label>Movate Lead Name *</label><input type="text" id="fOwner" required></div>
+          <div class="form-group"><label style="color:var(--accent-movate);">Owner Email (Alert Recipient) *</label><input type="email" id="fEmail" required></div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group"><label>DoorDash Requester *</label><input type="text" id="fRequester" required></div>
+          <div class="form-group"><label>Target EDD *</label><input type="date" id="fEdd" required></div>
+        </div>
+        <div class="form-group"><label>Status</label><select id="fStatus" onchange="toggleBlocker()"><option value="Not Started">Not Started</option><option value="In Progress" selected>In Progress</option><option value="Progress with a Blocker">Blocked</option><option value="Finished">Finished</option></select></div>
+        <div class="form-group" id="blockerGroup" style="display:none;"><label style="color:var(--status-orange);">Blocker Reason (Requires external action)</label><input type="text" id="fBlocker"></div>
+        <div class="form-group"><label>Deliverable Workspace Link</label><input type="url" id="fLink" placeholder="https://docs.google.com/..."></div>
+        <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:8px;">
+          <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-movate">Save &amp; Notify Owner</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let items = [];
+    let activeDept = 'ALL';
+    let chart1 = null;
+    let chart2 = null;
+
+    function setSyncStatus(syncing) {
+      document.getElementById('syncIndicator').className = syncing ? 'sync-dot loading' : 'sync-dot';
+      document.getElementById('syncText').textContent = syncing ? 'Saving...' : 'Connected';
+    }
+
+    function loadData() {
+      setSyncStatus(true);
+      google.script.run
+        .withSuccessHandler(function(jsonStr) {
+          try {
+            items = JSON.parse(jsonStr) || [];
+          } catch(e) { items = []; }
+          render();
+          setSyncStatus(false);
+        })
+        .withFailureHandler(function(err) {
+          alert("Could not load data: " + (err.message || err));
+          setSyncStatus(false);
+        })
+        .apiGetData();
+    }
+
+    function saveTask(e) {
+      e.preventDefault();
+      const id = document.getElementById('fId').value;
+      const payload = {
+        dept: document.getElementById('fDept').value,
+        priority: document.getElementById('fPriority').value,
+        title: document.getElementById('fTitle').value,
+        owner: document.getElementById('fOwner').value,
+        ownerEmail: document.getElementById('fEmail').value.trim(),
+        requester: document.getElementById('fRequester').value,
+        edd: document.getElementById('fEdd').value,
+        status: document.getElementById('fStatus').value,
+        blocker: document.getElementById('fBlocker').value,
+        link: document.getElementById('fLink').value
+      };
+      closeModal();
+      setSyncStatus(true);
+
+      if (id) {
+        google.script.run
+          .withSuccessHandler(function() { loadData(); })
+          .withFailureHandler(function(err) { alert("Error updating: " + err); setSyncStatus(false); })
+          .apiUpdateTask(id, payload);
+      } else {
+        google.script.run
+          .withSuccessHandler(function() { loadData(); })
+          .withFailureHandler(function(err) { alert("Error creating: " + err); setSyncStatus(false); })
+          .apiCreateTask(payload);
+      }
+    }
+
+    function deleteTaskItem(id) {
+      if (!confirm("Permanently delete " + id + "?")) return;
+      setSyncStatus(true);
+      google.script.run
+        .withSuccessHandler(function() { loadData(); })
+        .withFailureHandler(function(err) { alert("Error deleting: " + err); setSyncStatus(false); })
+        .apiDeleteTask(id);
+    }
+
+    function setDeptFilter(dept) {
+      activeDept = dept;
+      ['All', 'QA', 'TRN', 'OPS'].forEach(d => {
+        const el = document.getElementById('pill' + d);
+        if (el) el.classList.toggle('active', (dept === 'ALL' && d === 'All') || (dept === d));
+      });
+      render();
+    }
+
+    function render() {
+      // Filter list
+      const filtered = activeDept === 'ALL' ? items : items.filter(i => i.dept === activeDept);
+      document.getElementById('filterShowing').textContent = filtered.length;
+
+      // KPIs
+      document.getElementById('kpiTotal').textContent = filtered.length;
+      document.getElementById('kpiProgress').textContent = filtered.filter(i => i.status === 'In Progress').length;
+      document.getElementById('kpiBlocked').textContent = filtered.filter(i => i.status === 'Progress with a Blocker').length;
+      document.getElementById('kpiFinished').textContent = filtered.filter(i => i.status === 'Finished').length;
+
+      // Department Scorecards
+      ['QA', 'TRN', 'OPS'].forEach(dept => {
+        const dItems = items.filter(i => i.dept === dept);
+        const blockers = dItems.filter(i => i.status === 'Progress with a Blocker').length;
+        const today = new Date().toISOString().split('T')[0];
+        const overdue = dItems.filter(i => i.status !== 'Finished' && i.edd && i.edd < today).length;
+        const sla = dItems.length ? Math.max(0, Math.round(((dItems.length - overdue) / dItems.length) * 100)) : 100;
+        
+        document.getElementById(dept.toLowerCase() + 'Count').textContent = dItems.length + ' Tasks';
+        document.getElementById(dept.toLowerCase() + 'Sla').textContent = sla + '%';
+        document.getElementById(dept.toLowerCase() + 'Blockers').textContent = blockers;
+      });
+
+      // Kanban Columns
+      const statuses = ['Not Started', 'In Progress', 'Progress with a Blocker', 'Finished'];
+      const containers = ['colNotStarted', 'colProgress', 'colBlocked', 'colFinished'];
+      const counters = ['cntNotStarted', 'cntProgress', 'cntBlocked', 'cntFinished'];
+
+      statuses.forEach((st, idx) => {
+        const colItems = filtered.filter(i => i.status === st);
+        document.getElementById(counters[idx]).textContent = colItems.length;
+        document.getElementById(containers[idx]).innerHTML = colItems.map(item => `
+          <div class="card">
+            <span class="badge-dept badge-${item.dept.toLowerCase()}">${item.dept}</span>
+            <div class="card-title">${item.title}</div>
+            <div class="card-meta">
+              <div>👤 <strong>${item.owner}</strong></div>
+              <div>📅 EDD: ${item.edd}</div>
+            </div>
+            ${item.blocker ? `<div class="blocker-box">⚠️ ${item.blocker}</div>` : ''}
+            <div class="card-footer">
+              <span>${item.id}</span>
+              <div class="card-btns">
+                <button class="mini-btn" title="Edit" onclick="openEditModal('${item.id}')">✏️</button>
+                <button class="mini-btn" title="Delete" onclick="deleteTaskItem('${item.id}')">🗑️</button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      });
+
+      // Table View
+      document.getElementById('tableRecords').innerHTML = filtered.map(i => `
+        <tr style="border-bottom:1px solid #F1F5F9;">
+          <td style="padding:10px; font-weight:700;">${i.id}</td>
+          <td><span class="badge-dept badge-${i.dept.toLowerCase()}">${i.dept}</span></td>
+          <td><strong>${i.title}</strong></td>
+          <td>${i.owner}</td>
+          <td style="color:var(--accent-movate);">${i.ownerEmail}</td>
+          <td>${i.requester}</td>
+          <td>${i.edd}</td>
+          <td>${i.status}</td>
+          <td>
+            <button class="mini-btn" onclick="openEditModal('${i.id}')">✏️</button>
+            <button class="mini-btn" onclick="deleteTaskItem('${i.id}')">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+
+      renderCharts();
+      lucide.createIcons();
+    }
+
+    function renderCharts() {
+      if (chart1) chart1.destroy();
+      if (chart2) chart2.destroy();
+
+      const slaCanvas = document.getElementById('slaChart');
+      const statusCanvas = document.getElementById('statusChart');
+      if (!slaCanvas || !statusCanvas) return;
+
+      const slaCtx = slaCanvas.getContext('2d');
+      const today = new Date().toISOString().split('T')[0];
+      const depts = ['QA', 'TRN', 'OPS'];
+      const slaData = depts.map(d => {
+        const dItems = items.filter(i => i.dept === d);
+        if (!dItems.length) return 100;
+        const overdue = dItems.filter(i => i.status !== 'Finished' && i.edd && i.edd < today).length;
+        return Math.max(0, Math.round(((dItems.length - overdue) / dItems.length) * 100));
+      });
+
+      chart1 = new Chart(slaCtx, {
+        type: 'bar',
+        data: {
+          labels: ['QA', 'Training', 'Operations'],
+          datasets: [{ data: slaData, backgroundColor: ['#4F46E5', '#DB2777', '#0284C7'], borderRadius: 4 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } }
+      });
+
+      const stCtx = statusCanvas.getContext('2d');
+      chart2 = new Chart(stCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Not Started', 'In Progress', 'Blocked', 'Finished'],
+          datasets: [{
+            data: [
+              items.filter(i => i.status === 'Not Started').length,
+              items.filter(i => i.status === 'In Progress').length,
+              items.filter(i => i.status === 'Progress with a Blocker').length,
+              items.filter(i => i.status === 'Finished').length
+            ],
+            backgroundColor: ['#DC2626', '#D97706', '#EA580C', '#16A34A']
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function toggleBlocker() {
+      const val = document.getElementById('fStatus').value;
+      document.getElementById('blockerGroup').style.display = val === 'Progress with a Blocker' ? 'flex' : 'none';
+    }
+
+    function openModal() {
+      document.getElementById('taskForm').reset();
+      document.getElementById('fId').value = "";
+      document.getElementById('modalTitle').textContent = "Register Deliverable";
+      document.getElementById('modal').classList.add('open');
+    }
+
+    function openEditModal(id) {
+      const it = items.find(i => i.id === id);
+      if (!it) return;
+      document.getElementById('fId').value = it.id;
+      document.getElementById('fDept').value = it.dept;
+      document.getElementById('fPriority').value = it.priority;
+      document.getElementById('fTitle').value = it.title;
+      document.getElementById('fOwner').value = it.owner;
+      document.getElementById('fEmail').value = it.ownerEmail;
+      document.getElementById('fRequester').value = it.requester;
+      document.getElementById('fEdd').value = it.edd;
+      document.getElementById('fStatus').value = it.status;
+      document.getElementById('fBlocker').value = it.blocker || "";
+      document.getElementById('fLink').value = it.link || "";
+      toggleBlocker();
+      document.getElementById('modalTitle').textContent = "Edit Deliverable [" + it.id + "]";
+      document.getElementById('modal').classList.add('open');
+    }
+
+    function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+    function changeView(v) {
+      document.getElementById('viewKanban').style.display = v === 'kanban' ? 'grid' : 'none';
+      document.getElementById('viewTable').style.display = v === 'table' ? 'block' : 'none';
+      document.getElementById('viewAnalytics').style.display = v === 'analytics' ? 'flex' : 'none';
+      document.getElementById('btnNavKanban').classList.toggle('active', v === 'kanban');
+      document.getElementById('btnNavTable').classList.toggle('active', v === 'table');
+      document.getElementById('btnNavAnalytics').classList.toggle('active', v === 'analytics');
+      if (v === 'analytics') {
+        setTimeout(renderCharts, 100);
+      }
+    }
+
+    window.onload = loadData;
+  </script>
+</body>
+</html>
